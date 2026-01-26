@@ -29,18 +29,33 @@ async function runLocally({ lang, sourceCode, input, id, conf }) {
         fs.writeFileSync(filePath, sourceCode);
 
         if (conf.compile) {
-            await execAsync(conf.compile, { cwd: dir });
+            console.log(`[RUNNER-${id}] Compiling ${lang} code...`);
+            try {
+                await execAsync(conf.compile, { cwd: dir });
+                console.log(`[RUNNER-${id}] Compilation successful`);
+            } catch (compileErr) {
+                console.error(`[RUNNER-${id}] Compilation failed:`, compileErr.message);
+                throw compileErr;
+            }
         }
 
-        const { stdout } = await execAsync(conf.run, {
+        console.log(`[RUNNER-${id}] Running ${lang} code with input size: ${input.length} bytes`);
+        const { stdout, stderr } = await execAsync(conf.run, {
             cwd: dir,
             input,
             timeout: conf.timeoutMs
         });
 
+        if (stderr) {
+            console.log(`[RUNNER-${id}] Execution stderr:`, stderr);
+        }
+
         return {
             time_ns: Number(stdout.trim())
         };
+    } catch (error) {
+        console.error(`[RUNNER-${id}] Execution error:`, error.message);
+        throw error;
     } finally {
         fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -99,9 +114,11 @@ function execAsync(cmd, opts = {}) {
             maxBuffer: 10 * 1024 * 1024 // 10MB
         }, (err, stdout, stderr) => {
             if (err) {
-                const errorMsg = stderr ? `${stderr.trim()}` : err.message;
-                const fullError = `${cmd}\nError: ${errorMsg}`;
-                return reject(new Error(fullError));
+                let errorDetails = `Command: ${cmd}\n`;
+                if (stdout) errorDetails += `Stdout: ${stdout}\n`;
+                if (stderr) errorDetails += `Stderr: ${stderr}\n`;
+                errorDetails += `Error: ${err.message}`;
+                return reject(new Error(errorDetails));
             }
             resolve({ stdout, stderr });
         });
