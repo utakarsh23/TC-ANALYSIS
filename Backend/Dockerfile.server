@@ -3,8 +3,8 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files from Backend directory
+COPY Backend/package*.json ./
 
 # Install dependencies
 RUN npm install --production
@@ -25,8 +25,8 @@ RUN apk add --no-cache \
 # Copy node modules from builder
 COPY --from=builder /app/node_modules ./node_modules
 
-# Copy application files
-COPY . .
+# Copy application files from Backend directory
+COPY Backend/ .
 
 # Expose port
 EXPOSE 9092
