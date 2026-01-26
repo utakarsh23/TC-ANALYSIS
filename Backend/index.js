@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const SubmitRouter = require('./Routes/SubmitRouter');
 const { jsonParser } = require('./Middlewares/index');
+require('dotenv').config();
 
 
 const app = express();
