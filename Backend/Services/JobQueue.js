@@ -49,11 +49,11 @@ function deleteJob(jobId) {
     jobs.delete(jobId);
 }
 
-// Clean up old jobs (> 10 minutes)
+// Clean up old jobs (> 30 minutes to prevent loss of completed jobs)
 setInterval(() => {
     const now = Date.now();
     for (const [jobId, job] of jobs.entries()) {
-        if (now - job.createdAt.getTime() > 10 * 60 * 1000) {
+        if (now - job.createdAt.getTime() > 30 * 60 * 1000) {
             jobs.delete(jobId);
         }
     }

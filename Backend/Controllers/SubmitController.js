@@ -1,6 +1,6 @@
 const {executor} = require("../Services/Executor");
 const {generateGraphData} = require("../Services/GraphService");
-const {createJob, updateJobStatus, JobStatus} = require("../Services/JobQueue");
+const {createJob, updateJobStatus, getJob, JobStatus} = require("../Services/JobQueue");
 const crypto = require("crypto");
 
 async function codeGen(req, res) {
@@ -131,8 +131,6 @@ async function processJob(jobId, params) {
 
 async function getJobStatus(req, res) {
     const {jobId} = req.params;
-    const {getJob} = require("../Services/JobQueue");
-    
     const job = getJob(jobId);
     
     if (!job) {
