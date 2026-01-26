@@ -11,6 +11,8 @@ import Toast from "@/components/Toast";
 import GraphModal from "@/components/GraphModal";
 import InputTypeSelector, { type InputType } from "@/components/InputTypeSelector";
 import CustomTestCases, { type CustomTestCase } from "@/components/CustomTestCases";
+// env variable for backend URL
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL;
 
 interface Execution {
   tag: string;
@@ -142,7 +144,7 @@ export default function Home() {
     setError(null);
     try {
       const response = await axios.post(
-        "http://localhost:9092/api/submit",
+        `${BACKEND_URL}/api/submit`,
         {
           code,
           lang: language,
