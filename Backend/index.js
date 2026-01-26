@@ -4,20 +4,28 @@ const SubmitRouter = require('./Routes/SubmitRouter');
 const { jsonParser } = require('./Middlewares/index');
 require('dotenv').config();
 
-// Handle EPIPE error on Render - prevents crash on stdout close
-process.stdout.on('error', (err) => {
-    if (err.code === 'EPIPE') {
-        // Ignore EPIPE errors - happens when logs are closed
-        return;
-    }
-    throw err;
-});
+// Handle EPIPE errors gracefully - happens on Render when logs close
+if (process.stdout && process.stdout.on) {
+    process.stdout.on('error', (err) => {
+        if (err.code !== 'EPIPE') throw err;
+        // Silently ignore EPIPE
+    });
+}
 
-process.stderr.on('error', (err) => {
-    if (err.code === 'EPIPE') {
+if (process.stderr && process.stderr.on) {
+    process.stderr.on('error', (err) => {
+        if (err.code !== 'EPIPE') throw err;
+        // Silently ignore EPIPE
+    });
+}
+
+// Handle uncaught exceptions to prevent crashes
+process.on('uncaughtException', (err) => {
+    if (err.code === 'EPIPE' || err.errno === -32) {
+        // Silently ignore EPIPE
         return;
     }
-    throw err;
+    console.error('Uncaught Exception:', err);
 });
 
 const app = express();
@@ -28,7 +36,12 @@ app.use(cors({
     origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:5173', 'http://localhost:3000', 'https://tc-analysis-xi.vercel.app'],
     credentials: true
 }));
-console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN || 'using defaults');
+
+try {
+    console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN || 'using defaults');
+} catch (e) {
+    // Ignore console errors
+}
 
 // Routes
 app.use("/api", SubmitRouter);
@@ -38,4 +51,10 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, () => console.log("Server has been started on Port :" + PORT));
+const server = app.listen(PORT, () => {
+    try {
+        console.log("Server has been started on Port :" + PORT);
+    } catch (e) {
+        // Ignore console errors
+    }
+});
