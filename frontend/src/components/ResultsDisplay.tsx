@@ -137,7 +137,7 @@ export default function ResultsDisplay({
                       color: "rgb(120, 113, 108)",
                       usePointStyle: true,
                       padding: 20,
-                      font: { size: 12, weight: "600" },
+                      font: { size: 12, weight: "bold" },
                     },
                   },
                   tooltip: {
