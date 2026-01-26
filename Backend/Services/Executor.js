@@ -10,11 +10,13 @@ async function executor({ jobId, code, lang, tag, imports = [], inputType = 'int
 
     // If custom test cases provided, use those instead
     if (customTestCases.length > 0) {
+        console.log(`[EXECUTOR-${jobId}] Processing ${customTestCases.length} custom test cases`);
         for (let i = 0; i < customTestCases.length; i++) {
             const input = customTestCases[i];
             const sourceCode = injectBoilerplate(lang, code, imports, inputType);
 
             try {
+                console.log(`[EXECUTOR-${jobId}] Running custom test ${i + 1}/${customTestCases.length}`);
                 const result = await run({
                     lang,
                     sourceCode,
@@ -22,12 +24,14 @@ async function executor({ jobId, code, lang, tag, imports = [], inputType = 'int
                     jobId: `${jobId}-custom-${i}`
                 });
 
+                console.log(`[EXECUTOR-${jobId}] Custom test ${i + 1} completed: ${(result.time_ns / 1000000).toFixed(2)}ms`);
                 results.push({
                     inputSize: `Custom ${i + 1}`,
                     timeNs: result.time_ns,
                     timeMs: result.time_ns / 1000000
                 });
             } catch (error) {
+                console.error(`[EXECUTOR-${jobId}] Custom test ${i + 1} failed:`, error.message);
                 results.push({
                     inputSize: `Custom ${i + 1}`,
                     error: error.message,
@@ -38,11 +42,13 @@ async function executor({ jobId, code, lang, tag, imports = [], inputType = 'int
         }
     } else {
         // Use standard input sizes with generated data
+        console.log(`[EXECUTOR-${jobId}] Processing ${inputSizes.length} input sizes for tag: ${tag}`);
         for (const size of inputSizes) {
             const input = generateInput(tag, size, inputType, sampleInput);
             const sourceCode = injectBoilerplate(lang, code, imports, inputType);
 
             try {
+                console.log(`[EXECUTOR-${jobId}] Running ${tag} test with input size ${size}`);
                 const result = await run({
                     lang,
                     sourceCode,
@@ -50,12 +56,14 @@ async function executor({ jobId, code, lang, tag, imports = [], inputType = 'int
                     jobId: `${jobId}-${tag}-${size}`
                 });
 
+                console.log(`[EXECUTOR-${jobId}] ${tag} test size ${size} completed: ${(result.time_ns / 1000000).toFixed(2)}ms`);
                 results.push({
                     inputSize: size,
                     timeNs: result.time_ns,
                     timeMs: result.time_ns / 1000000
                 });
             } catch (error) {
+                console.error(`[EXECUTOR-${jobId}] ${tag} test size ${size} failed:`, error.message);
                 results.push({
                     inputSize: size,
                     error: error.message,

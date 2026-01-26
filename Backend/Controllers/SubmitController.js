@@ -71,6 +71,9 @@ async function codeGen(req, res) {
 async function processJob(jobId, params) {
     const {code, lang, normalizedTags, importList, dataType, normalizedCustom, hasTagTests, wantsCustom, hasCustomTests} = params;
     
+    console.log(`[PROCESS-${jobId}] Starting job processing`);
+    console.log(`[PROCESS-${jobId}] Language: ${lang}, Tags: ${hasTagTests ? normalizedTags.join(',') : 'none'}, Custom tests: ${normalizedCustom.length}`);
+    
     try {
         updateJobStatus(jobId, JobStatus.PROCESSING);
         
@@ -78,22 +81,30 @@ async function processJob(jobId, params) {
 
         // Execute code for tags with auto-generated inputs (if tags provided)
         if (hasTagTests) {
+            console.log(`[PROCESS-${jobId}] Executing ${normalizedTags.length} tag-based tests`);
             const tagExecutions = await Promise.all(
-                normalizedTags.map(tag => executor({ 
-                    jobId, 
-                    code, 
-                    lang, 
-                    tag, 
-                    imports: importList,
-                    inputType: dataType,
-                    customTestCases: [] // Don't mix custom with tag-based executions
-                }))
+                normalizedTags.map(tag => {
+                    console.log(`[PROCESS-${jobId}] Starting test for tag: ${tag}`);
+                    return executor({ 
+                        jobId, 
+                        code, 
+                        lang, 
+                        tag, 
+                        imports: importList,
+                        inputType: dataType,
+                        customTestCases: [] // Don't mix custom with tag-based executions
+                    }).catch(err => {
+                        console.error(`[PROCESS-${jobId}] Error in tag ${tag}:`, err.message);
+                        throw err;
+                    });
+                })
             );
             executions.push(...tagExecutions);
         }
 
         // Execute custom test cases separately (if provided)
         if (wantsCustom && hasCustomTests) {
+            console.log(`[PROCESS-${jobId}] Executing ${normalizedCustom.length} custom test cases`);
             const customExecution = await executor({
                 jobId,
                 code,
@@ -102,13 +113,18 @@ async function processJob(jobId, params) {
                 imports: importList,
                 inputType: dataType,
                 customTestCases: normalizedCustom
+            }).catch(err => {
+                console.error(`[PROCESS-${jobId}] Error in custom tests:`, err.message);
+                throw err;
             });
             executions.push(customExecution);
         }
 
         // Generate graph data
+        console.log(`[PROCESS-${jobId}] Generating graph data from ${executions.length} execution sets`);
         const graphData = generateGraphData(executions, lang);
 
+        console.log(`[PROCESS-${jobId}] Job completed successfully`);
         updateJobStatus(jobId, JobStatus.COMPLETED, {
             result: {
                 jobId,
@@ -119,7 +135,8 @@ async function processJob(jobId, params) {
             }
         });
     } catch (error) {
-        console.error('Execution error:', error);
+        console.error(`[PROCESS-${jobId}] FATAL ERROR:`, error.message);
+        console.error(`[PROCESS-${jobId}] Stack trace:`, error.stack);
         updateJobStatus(jobId, JobStatus.FAILED, {
             error: {
                 message: error.message,
