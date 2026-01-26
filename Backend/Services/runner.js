@@ -99,7 +99,9 @@ function execAsync(cmd, opts = {}) {
             maxBuffer: 10 * 1024 * 1024 // 10MB
         }, (err, stdout, stderr) => {
             if (err) {
-                return reject(new Error(stderr || err.message));
+                const errorMsg = stderr ? `${stderr.trim()}` : err.message;
+                const fullError = `${cmd}\nError: ${errorMsg}`;
+                return reject(new Error(fullError));
             }
             resolve({ stdout, stderr });
         });
