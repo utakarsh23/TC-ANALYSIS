@@ -1,5 +1,6 @@
 const {executor} = require("../Services/Executor");
 const {generateGraphData} = require("../Services/GraphService");
+const {createJob, updateJobStatus, JobStatus} = require("../Services/JobQueue");
 const crypto = require("crypto");
 
 async function codeGen(req, res) {
@@ -35,7 +36,44 @@ async function codeGen(req, res) {
 
     const jobId = crypto.randomUUID();
 
+    // Create job immediately
+    createJob(jobId, {
+        code,
+        lang,
+        tags: normalizedTags,
+        imports: importList,
+        inputType: dataType,
+        customTestCases: normalizedCustom,
+        wantsCustom
+    });
+
+    // Return jobId immediately - processing happens in background
+    res.status(202).json({
+        jobId,
+        status: JobStatus.QUEUED,
+        message: "Job queued for processing"
+    });
+
+    // Process asynchronously
+    processJob(jobId, {
+        code,
+        lang,
+        normalizedTags,
+        importList,
+        dataType,
+        normalizedCustom,
+        hasTagTests,
+        wantsCustom,
+        hasCustomTests
+    });
+}
+
+async function processJob(jobId, params) {
+    const {code, lang, normalizedTags, importList, dataType, normalizedCustom, hasTagTests, wantsCustom, hasCustomTests} = params;
+    
     try {
+        updateJobStatus(jobId, JobStatus.PROCESSING);
+        
         const executions = [];
 
         // Execute code for tags with auto-generated inputs (if tags provided)
@@ -71,21 +109,55 @@ async function codeGen(req, res) {
         // Generate graph data
         const graphData = generateGraphData(executions, lang);
 
-        return res.status(200).json({
-            jobId,
-            language: lang,
-            executions,
-            graphData,
-            timestamp: new Date().toISOString()
+        updateJobStatus(jobId, JobStatus.COMPLETED, {
+            result: {
+                jobId,
+                language: lang,
+                executions,
+                graphData,
+                timestamp: new Date().toISOString()
+            }
         });
     } catch (error) {
         console.error('Execution error:', error);
-        return res.status(500).json({
-            error: "Execution failed",
-            message: error.message
+        updateJobStatus(jobId, JobStatus.FAILED, {
+            error: {
+                message: error.message,
+                stack: error.stack
+            }
         });
     }
 }
 
+async function getJobStatus(req, res) {
+    const {jobId} = req.params;
+    const {getJob} = require("../Services/JobQueue");
+    
+    const job = getJob(jobId);
+    
+    if (!job) {
+        return res.status(404).json({
+            error: "Job not found",
+            message: "Job may have expired or does not exist"
+        });
+    }
+    
+    const response = {
+        jobId: job.id,
+        status: job.status,
+        createdAt: job.createdAt
+    };
+    
+    if (job.status === JobStatus.COMPLETED) {
+        response.result = job.result;
+    } else if (job.status === JobStatus.FAILED) {
+        response.error = job.error;
+    } else if (job.status === JobStatus.PROCESSING) {
+        response.message = "Job is being processed";
+    }
+    
+    return res.status(200).json(response);
+}
 
-module.exports = { codeGen };
+
+module.exports = { codeGen, getJobStatus };

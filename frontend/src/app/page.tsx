@@ -143,7 +143,8 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post(
+      // Submit job - returns immediately with jobId
+      const submitResponse = await axios.post(
         `${BACKEND_URL}/api/submit`,
         {
           code,
@@ -155,39 +156,79 @@ export default function Home() {
         }
       );
 
-      console.log(response)
+      console.log("Job submitted:", submitResponse.data);
+      const jobId = submitResponse.data.jobId;
 
-      const executionData = response.data.executions || [];
-      const complexityData = response.data.complexityAnalysis || [];
+      // Job is queued, turn off loading on button
+      setLoading(false);
 
-      setExecutions(executionData);
-      setComplexityAnalysis(complexityData);
+      // Poll for results
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusResponse = await axios.get(
+            `${BACKEND_URL}/api/status/${jobId}`
+          );
 
-      // Save to history
-      const historyEntry: ExecutionHistory = {
-        id: response.data.jobId || Date.now().toString(),
-        timestamp: new Date().toLocaleString(),
-        language,
-        code,
-        imports: imports.filter((i) => i.trim()),
-        tags,
-        executions: executionData,
-        complexityAnalysis: complexityData,
-      };
+          console.log("Job status:", statusResponse.data);
 
-      setExecutionHistory((prev) => [historyEntry, ...prev]);
-      setSelectedHistoryId(historyEntry.id);
-      
-      // Show toast notification
-      setShowToast(true);
+          if (statusResponse.data.status === "completed") {
+            clearInterval(pollInterval);
+            
+            const result = statusResponse.data.result;
+            const executionData = result.executions || [];
+            const complexityData = result.complexityAnalysis || [];
+
+            setExecutions(executionData);
+            setComplexityAnalysis(complexityData);
+
+            // Save to history
+            const historyEntry: ExecutionHistory = {
+              id: result.jobId || Date.now().toString(),
+              timestamp: new Date().toLocaleString(),
+              language,
+              code,
+              imports: imports.filter((i) => i.trim()),
+              tags,
+              executions: executionData,
+              complexityAnalysis: complexityData,
+            };
+
+            setExecutionHistory((prev) => [historyEntry, ...prev]);
+            setSelectedHistoryId(historyEntry.id);
+            
+            // Show toast notification
+            setShowToast(true);
+            setLoading(false);
+          } else if (statusResponse.data.status === "failed") {
+            clearInterval(pollInterval);
+            setError(statusResponse.data.error?.message || "Execution failed");
+            setLoading(false);
+          }
+          // If still processing or queued, keep polling
+        } catch (pollError: any) {
+          console.error("Polling error:", pollError);
+          clearInterval(pollInterval);
+          setError("Failed to check job status");
+          setLoading(false);
+        }
+      }, 2000); // Poll every 2 seconds
+
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        if (loading) {
+          setError("Job timed out - took too long to process");
+          setLoading(false);
+        }
+      }, 300000); // 5 minutes
+
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
           err.message ||
-          "Failed to execute code. Make sure backend is running on http://localhost:9092"
+          "Failed to execute code. Make sure backend is running"
       );
       console.error(err);
-    } finally {
       setLoading(false);
     }
   };
