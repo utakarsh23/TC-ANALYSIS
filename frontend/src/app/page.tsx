@@ -12,8 +12,8 @@ import GraphModal from "@/components/GraphModal";
 import InputTypeSelector, { type InputType } from "@/components/InputTypeSelector";
 import CustomTestCases, { type CustomTestCase } from "@/components/CustomTestCases";
 // env variable for backend URL
-// const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL;
-const BACKEND_URL = "http://localhost:9092";
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL;
+// const BACKEND_URL = "http://localhost:9092";
 
 
 interface Execution {
