@@ -3,7 +3,7 @@
     "file": "Main.cpp",
     "compile": "g++ -O2 Main.cpp -o main",
     "run": "./main",
-    "timeoutMs": 15000,
+    "timeoutMs": 2500,
     "templates": {
       "int": [
         "#include <bits/stdc++.h>",
@@ -167,7 +167,7 @@
     "file": "Main.java",
     "compile": "javac Main.java",
     "run": "java Main",
-    "timeoutMs": 15000,
+    "timeoutMs": 2500,
     "templates": {
       "int": [
         "import java.util.*;",
@@ -316,7 +316,7 @@
   "python": {
     "file": "Main.py",
     "run": "python3 Main.py",
-    "timeoutMs": 15000,
+    "timeoutMs": 2500,
     "templates": {
       "int": [
         "import sys, time",
