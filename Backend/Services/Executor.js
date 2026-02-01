@@ -3,8 +3,14 @@ const { run } = require("./runner");
 const crypto = require("crypto");
 
 async function executor({ jobId, code, lang, tag, imports = [], inputType = 'int[]', sampleInput, customTestCases = [] }) {
-    // Test with different input sizes: 10^2, 10^3, 10^4, 10^5, 10^6
-    const inputSizes = [100, 1000, 10000, 100000, 1000000];
+    // Test with different input sizes (custom constraints)
+    const inputSizes = [
+        10, 100, 250, 500, 750,
+        1000, 1500, 2000, 2500, 3000,
+        3500, 4000, 4500, 5000, 5500,
+        6000, 6500, 7000, 7500, 8000,
+        8500, 9000, 9500, 10000
+    ];
     
     const results = [];
 
