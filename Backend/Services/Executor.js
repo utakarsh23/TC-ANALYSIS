@@ -8,6 +8,26 @@ async function executor({ jobId, code, lang, tag, imports = [], inputType = 'int
     
     const results = [];
 
+    // COLD START: Run a warm-up execution to avoid cold start overhead
+    console.log(`[EXECUTOR-${jobId}] Performing cold start (warm-up run)...`);
+    try {
+        const warmupInput = customTestCases.length > 0 
+            ? customTestCases[0] 
+            : generateInput(tag, 1000, inputType, sampleInput);
+        const warmupCode = injectBoilerplate(lang, code, imports, inputType);
+        
+        await run({
+            lang,
+            sourceCode: warmupCode,
+            input: warmupInput,
+            jobId: `${jobId}-warmup`
+        });
+        console.log(`[EXECUTOR-${jobId}] Cold start completed successfully`);
+    } catch (error) {
+        console.log(`[EXECUTOR-${jobId}] Cold start warning: ${error.message}`);
+        // Continue even if warm-up fails
+    }
+
     // If custom test cases provided, use those instead
     if (customTestCases.length > 0) {
         console.log(`[EXECUTOR-${jobId}] Processing ${customTestCases.length} custom test cases`);
